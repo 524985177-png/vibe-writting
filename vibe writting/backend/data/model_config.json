@@ -1,0 +1,17 @@
+{
+  "providers": [
+    {
+      "id": "openai",
+      "name": "mimo",
+      "base_url": "https://token-plan-cn.xiaomimimo.com/v1",
+      "api_key": "tp-c6expl14f24983k9c9yeplk3xdx92kzxnu92c2tqslwwe45y",
+      "provider_type": "openai",
+      "models": [
+        "mimo-v2.5"
+      ],
+      "enabled": true
+    }
+  ],
+  "active_provider_id": "openai",
+  "active_model": "mimo-v2.5"
+}
