@@ -383,10 +383,7 @@ export default function ChatWorkspace() {
   }
 
   const processUserMessage = async (msg) => {
-    // 所有消息直接交给 AI 处理，不做前端关键词匹配
-    // AI 拥有完整项目上下文，自己决定做什么
-    return handleGeneralChat(msg)
-
+    // 所有消息直接交给 AI 处理
     return handleGeneralChat(msg)
   }
 
@@ -467,31 +464,31 @@ export default function ChatWorkspace() {
         setMessages(prev => [...prev, { id: aiMsgId, role: 'assistant', content: displayText }])
       }
 
-      // 如果有创建操作，刷新数据
-      if (createdEntities.length > 0) {
-        // 等待后端保存章节内容，再刷新并检查
-        await new Promise(r => setTimeout(r, 1500))
+      // 检测是否有章节相关操作（ACTION 标签 或 保存成功消息）
+      const hasChapterAction = createdEntities.some(e => e.type === 'chapter')
+      const hasSaveMessage = displayText.includes('已保存') || displayText.includes('已创建')
+
+      if (hasChapterAction || hasSaveMessage) {
+        // 等待后端保存章节内容
+        await new Promise(r => setTimeout(r, 2000))
         await fetchChapters(id)
 
-        // 如果创建了章节且有内容，运行质量检查
-        const createdChapter = createdEntities.find(e => e.type === 'chapter')
-        if (createdChapter) {
-          const updatedChapters = useProjectStore.getState().chapters
-          const ch = updatedChapters.find(c => c.id === createdChapter.id)
-          if (ch && ch.content && ch.status === 'completed') {
-            try {
-              const { data } = await qualityApi.summary(id, createdChapter.id)
-              if (data.summary) {
-                setMessages(prev => [...prev, { role: 'assistant', content: data.summary }])
-                if (conversationId) {
-                  conversationApi.addMessage(id, conversationId, { role: 'assistant', content: data.summary }).catch(() => {})
-                }
+        // 找到最新完成的章节，运行质量检查
+        const updatedChapters = useProjectStore.getState().chapters
+        const completedChapters = updatedChapters.filter(c => c.status === 'completed' && c.content)
+        if (completedChapters.length > 0) {
+          const latestCh = completedChapters[completedChapters.length - 1]
+          try {
+            const { data } = await qualityApi.summary(id, latestCh.id)
+            if (data.summary) {
+              setMessages(prev => [...prev, { role: 'assistant', content: data.summary }])
+              if (conversationId) {
+                conversationApi.addMessage(id, conversationId, { role: 'assistant', content: data.summary }).catch(() => {})
               }
-            } catch {}
-          }
+            }
+          } catch {}
         }
       } else {
-        // 没有操作时也刷新章节列表
         fetchChapters(id)
       }
     } catch (err) {
@@ -588,9 +585,9 @@ export default function ChatWorkspace() {
                   <div className="flex items-center gap-1 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <CopyButton text={msg.content} />
                     {/* 写前分析 → 确认写作按钮 */}
-                    {msg.content?.includes('写前分析') && msg.content.includes('POV') && !msg.content.includes('✅ 已保存') && (
+                    {msg.content?.includes('写前分析') && !msg.content.includes('✅ 已保存') && (
                       <button onClick={() => handleSend('确认写作，开始写正文')}
-                        className="text-xs text-white bg-green-600 hover:bg-green-700 px-2 py-0.5 rounded font-medium transition-colors">
+                        className="text-xs text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded-lg font-medium transition-colors shadow-sm shadow-green-200">
                         ✓ 确认写作
                       </button>
                     )}
@@ -932,8 +929,8 @@ export default function ChatWorkspace() {
                              (ch.content || '').toLowerCase().includes(q)
                     })
                     .map((ch, i) => (
-                    <button key={ch.id} onClick={() => setSelectedChapter(ch)}
-                      className="w-full text-left p-3 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all group">
+                    <div key={ch.id} onClick={() => setSelectedChapter(ch)}
+                      className="w-full text-left p-3 rounded-xl hover:bg-gray-50 hover:shadow-sm transition-all group cursor-pointer">
                       <div className="flex items-start gap-3">
                         {/* 序号 */}
                         <div className="relative flex-shrink-0">
@@ -984,7 +981,7 @@ export default function ChatWorkspace() {
                           </div>
                         </div>
                       </div>
-                    </button>
+                    </div>
                   ))}
                   {chapters.filter(ch => {
                     if (!chapterSearch) return true
@@ -1179,10 +1176,28 @@ function MemoryPanel({ projectId, project, chapters }) {
       {activeLayer === 'L3' && (
         <div className="space-y-4">
           <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-            <p className="text-xs text-red-600 font-medium mb-2">🔴 L3 宪法记忆 — 最高优先级，AI 创作时必须遵守</p>
+            <p className="text-xs text-red-600 font-medium mb-2">🔴 L3 宪法记忆 — AI 创作时必须遵守的设定</p>
             <p className="text-xs text-gray-500">修改后立即生效，AI 下次创作会自动加载</p>
           </div>
-          {Object.entries(docLabels).filter(([k]) => ['worldview', 'rules', 'conflict', 'settings'].includes(k)).map(([key, meta]) => (
+          {/* 必填文档 */}
+          <p className="text-xs font-medium text-red-500">必填（AI 创作的核心参考）</p>
+          {Object.entries(docLabels).filter(([k]) => ['outline', 'worldview', 'conflict'].includes(k)).map(([key, meta]) => (
+            <div key={key} className="border border-red-100 rounded-xl p-4 bg-red-50/30">
+              <div className="flex items-center gap-2 mb-2">
+                <span>{meta.icon}</span>
+                <span className="text-sm font-medium text-gray-800">{meta.label}</span>
+                <span className="text-[10px] px-1.5 py-0.5 bg-red-50 text-red-500 rounded font-medium">必填</span>
+                <span className="text-xs text-gray-400">({docs[key]?.length || 0} 字)</span>
+              </div>
+              <p className="text-xs text-gray-400 mb-2">{meta.desc}</p>
+              <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 max-h-32 overflow-y-auto whitespace-pre-wrap">
+                {docs[key] || '暂无内容'}
+              </div>
+            </div>
+          ))}
+          {/* 可选文档 */}
+          <p className="text-xs font-medium text-gray-500 mt-4">可选（按需添加）</p>
+          {Object.entries(docLabels).filter(([k]) => ['rules', 'settings', 'dialogue'].includes(k)).map(([key, meta]) => (
             <div key={key} className="border border-gray-200 rounded-xl p-4">
               <div className="flex items-center gap-2 mb-2">
                 <span>{meta.icon}</span>

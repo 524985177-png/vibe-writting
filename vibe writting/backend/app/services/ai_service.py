@@ -96,7 +96,9 @@ class AIService:
         response = await client.post(f"{base_url}/chat/completions", headers=headers, json=payload)
         response.raise_for_status()
         data = response.json()
-        return data["choices"][0]["message"]["content"]
+        msg = data["choices"][0]["message"]
+        # 某些模型（如 mimo）把内容放在 reasoning_content 而非 content
+        return msg.get("content") or msg.get("reasoning_content") or ""
 
     async def _stream_openai_response(
         self, client: httpx.AsyncClient, url: str, headers: dict, payload: dict
@@ -113,7 +115,8 @@ class AIService:
                 try:
                     chunk = json.loads(data_str)
                     delta = chunk.get("choices", [{}])[0].get("delta", {})
-                    content = delta.get("content", "")
+                    # 某些模型（如 mimo）把内容放在 reasoning_content 而非 content
+                    content = delta.get("content") or delta.get("reasoning_content") or ""
                     if content:
                         yield content
                 except (json.JSONDecodeError, IndexError, KeyError):

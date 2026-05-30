@@ -164,13 +164,23 @@ export default function WritingWorkspace() {
               {analysis ? (
                 <div className="text-xs text-gray-600 space-y-1.5 max-h-48 overflow-y-auto">
                   {typeof analysis === 'string' ? (
-                    <div className="whitespace-pre-wrap leading-relaxed">{analysis.slice(0, 1500)}</div>
+                    <div className="whitespace-pre-wrap leading-relaxed">
+                      {analysis
+                        .replace(/^#{1,6}\s*/gm, '')
+                        .replace(/\*{1,2}([^*]+)\*{1,2}/g, '$1')
+                        .replace(/^- /gm, '• ')
+                        .replace(/---+/g, '')
+                        .replace(/\n{3,}/g, '\n\n')
+                        .trim()
+                        .slice(0, 1500)
+                      }
+                    </div>
                   ) : (
                     Object.entries(analysis)
                       .filter(([k]) => k !== 'analysis')
                       .map(([k, v]) => {
                         const label = fieldLabels[k] || k
-                        const val = String(v).slice(0, 150)
+                        const val = String(v).replace(/[#*\-]/g, '').trim().slice(0, 150)
                         return <div key={k}><span className="text-gray-400">{label}：</span>{val}</div>
                       })
                   )}

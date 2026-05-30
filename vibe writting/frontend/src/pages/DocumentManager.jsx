@@ -5,12 +5,12 @@ import { documentApi } from '../api/client'
 import { useToast } from '../components/Toast'
 
 const DOC_TYPES = [
-  { type: 'outline', label: '大纲', icon: '📋', desc: '故事框架与章节规划' },
-  { type: 'worldview', label: '世界观', icon: '🌍', desc: '世界设定与规则' },
-  { type: 'rules', label: '法则', icon: '📏', desc: '不可违背的故事法则' },
-  { type: 'conflict', label: '冲突设计', icon: '⚔️', desc: '冲突链与张力设计' },
-  { type: 'settings', label: '设定记录', icon: '📝', desc: '具体设定与细节' },
-  { type: 'dialogue', label: '角色台词库', icon: '💬', desc: '角色经典台词' },
+  { type: 'outline', label: '大纲', icon: '📋', desc: '故事框架与章节规划', required: true },
+  { type: 'worldview', label: '世界观', icon: '🌍', desc: '世界设定与规则', required: true },
+  { type: 'conflict', label: '冲突设计', icon: '⚔️', desc: '冲突链与张力设计', required: true },
+  { type: 'rules', label: '法则', icon: '📏', desc: '不可违背的故事法则', required: false },
+  { type: 'settings', label: '设定记录', icon: '📝', desc: '具体设定与细节', required: false },
+  { type: 'dialogue', label: '角色台词库', icon: '💬', desc: '角色经典台词', required: false },
 ]
 
 export default function DocumentManager() {
@@ -54,6 +54,62 @@ export default function DocumentManager() {
       }
     } catch (err) {
       console.error('Failed to load documents:', err)
+    }
+  }
+
+  const handleAIGenerate = async () => {
+    if (!activeDoc) return
+    const docType = activeDoc.doc_type
+    const docLabel = DOC_TYPES.find(d => d.type === docType)?.label || docType
+
+    setSaving(true)
+    try {
+      const promptMap = {
+        outline: `请根据项目的题材和设定，生成一份完整的小说大纲，包含：基本信息、主线梗概、冲突设计、五阶段推进、前10章章节规划。输出 Markdown 格式。`,
+        worldview: `请根据项目的题材，生成一份完整的世界观设定文档，包含：世界层级、自然规则、文明规则、资源分布、势力格局。输出 Markdown 格式。`,
+        conflict: `请根据项目的设定，生成一份冲突设计文档，包含：核心冲突、三层冲突（宏观/中观/微观）、冲突链、冲突升级设计。输出 Markdown 格式。`,
+        rules: `请根据项目的题材，生成一份故事法则文档，包含：能力限制、冲突红线、不可违背的规则。输出 Markdown 格式。`,
+        settings: `请根据项目的设定，生成一份设定记录文档，包含：关键设定细节、术语解释、时间线。输出 Markdown 格式。`,
+        dialogue: `请根据项目的角色设定，生成一份角色台词库，包含：主角经典台词、反派经典台词、关键场景对话示例。输出 Markdown 格式。`,
+      }
+      const userMsg = promptMap[docType] || `请为「${docLabel}」生成内容。`
+
+      const response = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_id: parseInt(id), message: userMsg }),
+      })
+      if (!response.ok) throw new Error('请求失败')
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let fullText = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        for (const line of decoder.decode(value).split('\n')) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6))
+              if (data.done) break
+              if (data.content) fullText += data.content
+            } catch {}
+          }
+        }
+      }
+
+      // 清理 AI 回复中的 ACTION 标签
+      const cleanContent = fullText.replace(/\[ACTION:\w+:.+?\]/g, '').trim()
+      if (cleanContent) {
+        setContent(cleanContent)
+        await documentApi.update(id, docType, { content: cleanContent })
+        setDocuments(prev => prev.map(d => d.doc_type === docType ? { ...d, content: cleanContent } : d))
+        setLastSaved(new Date())
+      }
+    } catch (err) {
+      console.error('AI generation failed:', err)
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -112,30 +168,36 @@ export default function DocumentManager() {
             const doc = documents.find((d) => d.doc_type === dt.type)
             const hasContent = doc?.content && doc.content.length > 50
             return (
-              <button
-                key={dt.type}
-                onClick={() => doc && selectDoc(doc)}
-                className={`w-full text-left p-3 rounded-xl transition-all group ${
-                  activeDoc?.doc_type === dt.type
-                    ? 'bg-purple-50 border border-purple-200'
-                    : 'hover:bg-gray-50 border border-transparent'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <span className="text-lg">{dt.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${
-                      activeDoc?.doc_type === dt.type ? 'text-purple-700' : 'text-gray-700 group-hover:text-gray-900'
-                    }`}>
-                      {dt.label}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5 truncate">{dt.desc}</p>
+              <div key={dt.type}>
+                <button
+                  onClick={() => doc && selectDoc(doc)}
+                  className={`w-full text-left p-3 rounded-xl transition-all group ${
+                    activeDoc?.doc_type === dt.type
+                      ? 'bg-purple-50 border border-purple-200'
+                      : 'hover:bg-gray-50 border border-transparent'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-lg">{dt.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className={`text-sm font-medium ${
+                          activeDoc?.doc_type === dt.type ? 'text-purple-700' : 'text-gray-700 group-hover:text-gray-900'
+                        }`}>
+                          {dt.label}
+                        </p>
+                        {dt.required && (
+                          <span className="text-[10px] px-1.5 py-0.5 bg-red-50 text-red-500 rounded font-medium">必填</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5 truncate">{dt.desc}</p>
+                    </div>
+                    {hasContent && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                    )}
                   </div>
-                  {hasContent && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
-                  )}
-                </div>
-              </button>
+                </button>
+              </div>
             )
           })}
         </div>
@@ -175,6 +237,10 @@ export default function DocumentManager() {
                     <Check className="w-3.5 h-3.5" /> 已保存
                   </span>
                 )}
+                <button onClick={handleAIGenerate} disabled={saving || !activeDoc}
+                  className="px-3 py-2 text-sm font-medium border border-purple-300 text-purple-600 rounded-lg hover:bg-purple-50 disabled:opacity-50 flex items-center gap-1.5 transition-colors">
+                  {saving ? '⏳ 生成中...' : '✨ AI 生成'}
+                </button>
                 <button onClick={() => handleSave()} disabled={saving}
                   className="px-4 py-2 text-sm font-medium bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 flex items-center gap-1.5 transition-all btn-press">
                   <Save className="w-3.5 h-3.5" />
