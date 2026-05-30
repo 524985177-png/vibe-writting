@@ -1,12 +1,12 @@
-#氛围写作
+# Vibe Writing
 
-由AI驱动的长篇小说创作平台。基于novel-create技能的创作方法论，提供对话式AI写作体验。
+AI 驱动的长篇小说创作平台。基于 novel-create skill 的创作方法论，提供对话式 AI 写作体验。
 
 ## 功能特性
 
 ### 核心能力
 
-- **对话式创作**：像IDE助手一样与AI协作，AI拥有完整项目上下文
+- **对话式创作**：像 IDE 助手一样与 AI 协作，AI 拥有完整项目上下文
 - **自动操作**：AI 自动创建角色、伏笔、时间线，无需手动操作
 - **写前分析**：AI 先分析视角、冲突、钩子方向，用户确认后再写正文
 - **场景规划**：AI 输出 3-5 个场景卡片，可视化展示创作计划
@@ -24,7 +24,7 @@
 ### 对话功能
 
 - 对话历史持久化（刷新不丢失）
--回退 撤销操作+删除对话
+- Rewind 回退（撤销操作+删除对话）
 - 多轮对话记忆
 - 动态快捷指令
 
@@ -48,7 +48,7 @@
 ### 一键安装（推荐）
 
 ```bash
-git clone https://github.com/524985177-png/vibe-writting.git # 将项目克隆到本地
+git clone https://github.com/ShijingYangwow27/vibe-writting.git  # 克隆项目到本地
 cd vibe-writing                                                # 进入项目目录
 ./setup.sh                                                     # 运行一键安装脚本
 ```
@@ -64,13 +64,13 @@ cd vibe-writing                                                # 进入项目目
 ### 手动安装
 
 ```bash
-git clone https://github.com/524985177-png/vibe-writting.git  
+git clone https://github.com/ShijingYangwow27/vibe-writting.git  
 # 克隆项目到本地
 
 cd vibe-writing                                                # 进入项目目录
 
 # 后端
-cd 后端
+cd backend
 pip install -r requirements.txt
 cd ..
 
@@ -80,7 +80,7 @@ npm install
 cd ..
 ```
 
-##配置AI模型
+## 配置 AI 模型
 
 启动项目后，在前端「设置」页面配置 AI 模型供应商：
 
@@ -88,7 +88,7 @@ cd ..
 
 | 类型           | 说明                  | 示例                                     |
 | ------------ | ------------------- | -------------------------------------- |
-|与OpenAI兼容|支持OpenAI API格式的服务|OpenAI、DeepSeek、智谱、Moonshot、Ollama|
+| OpenAI 兼容    | 支持 OpenAI API 格式的服务 | OpenAI, DeepSeek, 智谱, Moonshot, Ollama |
 | Anthropic 原生 | Claude 系列模型         | Claude Sonnet, Haiku                   |
 
 ### 配置步骤
@@ -96,20 +96,20 @@ cd ..
 1. 打开 `http://localhost:5173/settings`
 2. 点击预设供应商（如 OpenAI）或「自定义供应商」
 3. 填写：
-   - **基础URL**：API地址（如`https://api.openai.com/v1`）
-   - **API密钥**：您的API密钥
+   - **Base URL**：API 地址（如 `https://api.openai.com/v1`）
+   - **API Key**：你的 API Key
    - **模型名称**：如 `gpt-4o`、`claude-sonnet-4-6`
 4. 点击模型名称即可切换
 
 ### 预设供应商
 
-|供应商|基础 URL|
+| 供应商         | Base URL                               |
 | ----------- | -------------------------------------- |
 | OpenAI      | `https://api.openai.com/v1`            |
 | DeepSeek    | `https://api.deepseek.com/v1`          |
-|智谱（GLM）| `https://open.bigmodel.cn/api/paas/v4` |
+| 智谱 (GLM)    | `https://open.bigmodel.cn/api/paas/v4` |
 | Moonshot    | `https://api.moonshot.cn/v1`           |
-|Ollama（本地）| `http://localhost:11434/v1`            |
+| Ollama (本地) | `http://localhost:11434/v1`            |
 
 ## 启动
 
@@ -123,7 +123,7 @@ cd ..
 
 ```bash
 # 终端 1：启动后端
-cd 后端
+cd backend
 python3 -m uvicorn app.main:app --reload --port 8000
 
 # 终端 2：启动前端
@@ -152,7 +152,7 @@ npm run dev
 ## 项目结构
 
 ```
-氛围写作/
+vibe-writing/
 ├── backend/                     # FastAPI 后端
 │   ├── app/
 │   │   ├── api/                 # 路由
@@ -197,7 +197,7 @@ npm run dev
 | ---- | ----------------------------------------- | --------- |
 | GET  | `/api/projects`                           | 项目列表      |
 | POST | `/api/projects`                           | 创建项目      |
-|POST| `/api/ai/chat`                            |AI对话（流式）|
+| POST | `/api/ai/chat`                            | AI 对话（流式） |
 | POST | `/api/ai/generate-outline`                | 生成大纲      |
 | POST | `/api/projects/{id}/quality/{chapter_id}` | 质量检查      |
 | GET  | `/api/projects/{id}/foreshadowings`       | 伏笔列表      |
@@ -205,7 +205,7 @@ npm run dev
 | GET  | `/api/projects/{id}/characters`           | 角色列表      |
 | GET  | `/api/projects/{id}/conversations`        | 对话历史      |
 
-完整API文档：启动后访问<http://localhost:8000/docs>
+完整 API 文档：启动后访问 <http://localhost:8000/docs>
 
 ## 许可证
 
